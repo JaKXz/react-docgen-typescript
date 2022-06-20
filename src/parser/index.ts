@@ -312,6 +312,12 @@ export class Parser {
             })
           ),
         };
+      } else if(ts.isClassDeclaration(declaration)) {
+        const {kind, name, typeParameters, members} = declaration as ts.ClassDeclaration;
+        console.table({
+          kind,
+          name, typeParameters, members
+        })
       }
 
       result = {

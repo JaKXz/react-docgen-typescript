@@ -1,8 +1,23 @@
 import * as ts from "typescript";
 import type { ParserOptions } from "./";
 import { Parser } from "./";
+import { fileToDocumentList } from "./generateDocuments";
 import type { ComponentDoc } from "./types";
-import { iterateSymbolTable, nonNull } from "./utilities";
+
+import { nonNull } from "./utilities";
+
+const pathToSourceFile = (program: ts.Program) => (filePath: string) =>
+  program.getSourceFile(filePath);
+
+const hasDifferentDisplayName =
+  (outerComp: ComponentDoc) => (innerComp: ComponentDoc) =>
+    innerComp.displayName !== outerComp.displayName;
+
+const duplicateDocuments = (
+  comp: ComponentDoc,
+  index: number,
+  comps: ComponentDoc[]
+) => comps.slice(index + 1).every(hasDifferentDisplayName(comp));
 
 export function parseWithProgramProvider(
   filePathOrPaths: string | string[],
@@ -20,74 +35,12 @@ export function parseWithProgramProvider(
 
   const parser = new Parser(program, parserOpts);
 
-  const checker = program.getTypeChecker();
-
   return filePaths
-    .map((filePath) => program.getSourceFile(filePath))
+    .map(pathToSourceFile(program))
     .filter(nonNull)
-    .reduce<ComponentDoc[]>((acc, sourceFile) => {
-      const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-      if (!moduleSymbol) {
-        return acc;
-      }
-
-      const components = checker.getExportsOfModule(moduleSymbol);
-      const componentDocs: ComponentDoc[] = [];
-
-      // First document all components
-      components.forEach((exp) => {
-        const doc = parser.getComponentInfo(
-          exp,
-          sourceFile,
-          parserOpts.componentNameResolver,
-          parserOpts.customComponentTypes
-        );
-
-        if (doc) {
-          componentDocs.push(doc);
-        }
-
-        // Then document any static sub-components
-        iterateSymbolTable<ComponentDoc>(exp.exports, (symbol) => {
-          if (symbol.flags & ts.SymbolFlags.Prototype) {
-            return null;
-          }
-
-          if (symbol.flags & ts.SymbolFlags.Method) {
-            const signature = parser.getCallSignature(symbol);
-            const returnType = checker.typeToString(signature.getReturnType());
-
-            if (returnType !== "Element") {
-              return null;
-            }
-          }
-
-          const doc = parser.getComponentInfo(
-            symbol,
-            sourceFile,
-            parserOpts.componentNameResolver,
-            parserOpts.customComponentTypes
-          );
-
-          if (doc) {
-            const prefix =
-              exp.escapedName === "default" ? "" : `${exp.escapedName}.`;
-
-            componentDocs.push({
-              ...doc,
-              displayName: `${prefix}${symbol.escapedName}`,
-            });
-          }
-
-          return null;
-        });
-      });
-
-      return [...acc, ...componentDocs];
-    }, [])
-    .filter((comp, index, comps) =>
-      comps
-        .slice(index + 1)
-        .every((innerComp) => innerComp.displayName !== comp.displayName)
-    );
+    .reduce<ComponentDoc[]>(
+      fileToDocumentList(parser, parserOpts, program.getTypeChecker()),
+      []
+    )
+    .filter(duplicateDocuments);
 }
