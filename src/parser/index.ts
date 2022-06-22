@@ -312,12 +312,6 @@ export class Parser {
             })
           ),
         };
-      } else if(ts.isClassDeclaration(declaration)) {
-        const {kind, name, typeParameters, members} = declaration as ts.ClassDeclaration;
-        console.table({
-          kind,
-          name, typeParameters, members
-        })
       }
 
       result = {
@@ -420,6 +414,7 @@ export class Parser {
     const members = this.extractMembersFromType(type);
     const methods: Method[] = [];
     members.forEach((member) => {
+      const foo = this.isPublicMethod(member);
       if (!this.isTaggedPublic(member)) {
         return;
       }
@@ -1061,5 +1056,14 @@ export class Parser {
 
       return acc;
     }, {} as StringIndexedObject<string | boolean | number | null>);
+  }
+
+  private isPublicMethod(member: ts.Symbol): boolean {
+    const declarations = member
+          .getDeclarations()
+          .find((dec) =>
+            dec.modifiers?.some((mod: ts.Modifier) => mod === ts.SyntaxKind.PublicKeyword)
+          );
+    return this.isTaggedPublic(member);
   }
 }
