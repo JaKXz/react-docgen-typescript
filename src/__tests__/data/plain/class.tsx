@@ -20,6 +20,7 @@ export default class Calculator {
 
   /**
    * Add two numbers
+   * @aCustomTag
    * @param a
    * @param b
    */
@@ -31,6 +32,7 @@ export default class Calculator {
 
   /**
    * Subtract two numbers
+   * @someCoolTag
    * @param a
    * @param b
    */

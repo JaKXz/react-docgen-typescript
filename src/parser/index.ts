@@ -414,8 +414,7 @@ export class Parser {
     const members = this.extractMembersFromType(type);
     const methods: Method[] = [];
     members.forEach((member) => {
-      const foo = this.isPublicMethod(member);
-      if (!this.isTaggedPublic(member)) {
+      if (!this.isPublicMethod(member)) {
         return;
       }
 
@@ -1059,11 +1058,8 @@ export class Parser {
   }
 
   private isPublicMethod(member: ts.Symbol): boolean {
-    const declarations = member
-          .getDeclarations()
-          .find((dec) =>
-            dec.modifiers?.some((mod: ts.Modifier) => mod === ts.SyntaxKind.PublicKeyword)
-          );
-    return this.isTaggedPublic(member);
+    const hasPublicKeyword = (member.valueDeclaration?.modifiers || []).some(modifier => modifier.kind === ts.SyntaxKind.PublicKeyword);
+
+    return this.isTaggedPublic(member) || hasPublicKeyword;
   }
 }
