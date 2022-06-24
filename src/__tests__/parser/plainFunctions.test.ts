@@ -95,4 +95,6 @@ describe("parser > plain functions integration tests", () => {
       },
     });
   });
+
+  it.todo('should extract custom tags');
 });
